@@ -1,6 +1,10 @@
 <template>
   <n-layout-sider bordered width="200" collapse-mode="width">
-    <n-menu v-model:value="activeKey" :options="menuOptions" @update:value="handleMenuClick" />
+    <n-menu
+      v-model:value="activeKey"
+      :options="menuOptions"
+      @update:value="handleMenuClick"
+    />
   </n-layout-sider>
 </template>
 
@@ -15,12 +19,12 @@ const activeKey = ref('dashboard')
 const menuOptions = [
   {
     label: '儀表板',
-    key: 'dashboard'
+    key: '',
   },
   {
     label: '商品管理',
-    key: 'products'
-  }
+    key: 'products',
+  },
 ]
 
 function handleMenuClick(key: string) {
