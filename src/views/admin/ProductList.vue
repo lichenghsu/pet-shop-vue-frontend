@@ -1,11 +1,7 @@
 <template>
   <div class="product-page">
     <!-- 標題 + 新增按鈕 -->
-    <n-space
-      justify="space-between"
-      align="center"
-      style="width: 100%; margin-bottom: 16px"
-    >
+    <n-space justify="space-between" align="center" style="width: 100%; margin-bottom: 16px">
       <n-h2>商品管理</n-h2>
       <n-button type="primary" @click="showModal = true">新增商品</n-button>
     </n-space>
@@ -25,13 +21,26 @@
         </n-form-item>
 
         <n-form-item label="描述" path="description">
-          <n-input
-            v-model:value="form.description"
-            type="textarea"
-            placeholder="請輸入商品描述"
-          />
+          <n-input v-model:value="form.description" type="textarea" placeholder="請輸入商品描述" />
         </n-form-item>
       </n-form>
+
+      <n-form-item label="標籤" path="tagIds">
+        <n-select
+          v-model:value="form.tagIds"
+          multiple
+          :options="tags.map((t: Tag) => ({ label: t.name, value: t.id }))"
+          placeholder="請選擇標籤"
+        />
+      </n-form-item>
+
+      <n-form-item label="分類" path="categoryId">
+        <n-select
+          v-model:value="form.categoryId"
+          :options="categories.map((c: Category) => ({ label: c.name, value: c.id }))"
+          placeholder="請選擇分類"
+        />
+      </n-form-item>
 
       <template #action>
         <n-button @click="showModal = false">取消</n-button>
@@ -59,7 +68,7 @@ import {
   NInput,
   NInputNumber,
   useMessage,
-  useDialog,
+  useDialog
 } from 'naive-ui'
 import type { FormRules } from 'naive-ui'
 
@@ -69,26 +78,45 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
-  type Product,
+  type Product
 } from '@/api/product'
+
+import { getAllTags } from '@/api/tag'
+import { getAllCategories } from '@/api/category'
+
+interface ProductForm {
+  name: string
+  price: number
+  description: string
+  categoryId: number | null
+  tagIds: number[]
+}
 
 const products = ref<Product[]>([])
 const showModal = ref(false)
 const message = useMessage()
 const dialog = useDialog()
 
+type Tag = { id: number; name: string }
+const tags = ref<Tag[]>([])
+
+type Category = { id: number; name: string }
+const categories = ref<Category[]>([])
+
 const formRef = ref()
-const form = ref({
+const form = ref<ProductForm>({
   name: '',
   price: 0,
   description: '',
+  categoryId: null,
+  tagIds: []
 })
 
 const isEditMode = ref(false)
 const currentEditId = ref<number | null>(null)
 
 function resetForm() {
-  form.value = { name: '', price: 0, description: '' }
+  form.value = { name: '', price: 0, description: '', categoryId: null, tagIds: [] }
   isEditMode.value = false
   currentEditId.value = null
 }
@@ -103,7 +131,7 @@ function confirmDelete(row: Product) {
       await deleteProduct(row.id)
       message.success('刪除成功')
       await loadProducts()
-    },
+    }
   })
 }
 
@@ -112,10 +140,22 @@ function openEditModal(row: Product) {
     name: row.name,
     price: row.price,
     description: row.description,
+    categoryId: row.category?.id ?? null,
+    tagIds: (row.tags ?? []).map((t: { id: number }) => t.id)
   }
   currentEditId.value = row.id
   isEditMode.value = true
   showModal.value = true
+}
+
+async function loadTags() {
+  const res = await getAllTags()
+  tags.value = res.data
+}
+
+async function loadCategories() {
+  const res = await getAllCategories()
+  categories.value = res.data
 }
 
 const columns = [
@@ -133,7 +173,7 @@ const columns = [
           {
             type: 'primary',
             size: 'small',
-            onClick: () => openEditModal(row),
+            onClick: () => openEditModal(row)
           },
           { default: () => '編輯' }
         ),
@@ -142,27 +182,40 @@ const columns = [
           {
             type: 'error',
             size: 'small',
-            onClick: () => confirmDelete(row),
+            onClick: () => confirmDelete(row)
           },
           { default: () => '刪除' }
-        ),
+        )
       ])
-    },
-  },
+    }
+  }
 ]
 
 const rules: FormRules = {
   name: {
     required: true,
     message: '請填寫商品名稱',
-    trigger: 'blur',
+    trigger: 'blur'
   },
   price: {
     required: true,
     type: 'number',
     message: '請填寫商品價格',
-    trigger: 'blur',
+    trigger: 'blur'
   },
+  tagIds: {
+    required: true,
+
+    type: 'array',
+    message: '請選擇商品標籤',
+    trigger: 'change'
+  },
+  categoryId: {
+    required: true,
+    type: 'number',
+    message: '請選擇商品分類',
+    trigger: 'change'
+  }
 }
 
 async function loadProducts() {
@@ -188,6 +241,8 @@ async function handleSubmit() {
 
 onMounted(() => {
   loadProducts()
+  loadCategories()
+  loadTags()
 })
 </script>
 

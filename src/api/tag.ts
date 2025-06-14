@@ -23,6 +23,6 @@ export function deleteTag(id: number) {
 
 export function searchTags(keyword: string) {
   return request.get<Tag[]>(`/tags/search`, {
-    params: { keyword },
+    params: { keyword }
   })
 }

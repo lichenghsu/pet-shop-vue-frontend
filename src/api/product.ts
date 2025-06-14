@@ -6,6 +6,14 @@ export interface Product {
   description: string
   price: number
   imageUrl?: string
+  category?: {
+    id: number
+    name: string
+  }
+  tags?: {
+    id: number
+    name: string
+  }[]
 }
 
 // GET /products
