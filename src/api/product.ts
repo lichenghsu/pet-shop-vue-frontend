@@ -5,15 +5,9 @@ export interface Product {
   name: string
   description: string
   price: number
-  imageUrl?: string
-  category?: {
-    id: number
-    name: string
-  }
-  tags?: {
-    id: number
-    name: string
-  }[]
+  categoryId: number | null
+  tagIds: number[]
+  imageUrl: (string | File)[]
 }
 
 // GET /products

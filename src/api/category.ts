@@ -20,6 +20,11 @@ export function createCategory(data: { name: string }) {
   return request.post('/categories', data)
 }
 
+// PUT /categories/{id}
+export function updateCategory(id: number, data: { name: string }) {
+  return request.put(`/categories/${id}`, data)
+}
+
 // DELETE /categories/{id}
 export function deleteCategory(id: number) {
   return request.delete(`/categories/${id}`)
@@ -28,6 +33,6 @@ export function deleteCategory(id: number) {
 // GET /categories/search?keyword=xxx
 export function searchCategories(keyword: string) {
   return request.get<Category[]>(`/categories/search`, {
-    params: { keyword },
+    params: { keyword }
   })
 }

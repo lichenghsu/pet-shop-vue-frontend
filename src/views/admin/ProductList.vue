@@ -1,78 +1,37 @@
 <template>
-  <div class="product-page">
-    <!-- 標題 + 新增按鈕 -->
-    <n-space justify="space-between" align="center" style="width: 100%; margin-bottom: 16px">
-      <n-h2>商品管理</n-h2>
-      <n-button type="primary" @click="showModal = true">新增商品</n-button>
-    </n-space>
+  <!-- 標題 + 新增按鈕 -->
+  <n-space justify="space-between" align="center" style="width: 100%; margin-bottom: 16px">
+    <n-h2>商品管理</n-h2>
+    <n-button type="primary" @click="openCreateModal">新增商品</n-button>
+  </n-space>
 
-    <!-- 商品列表 -->
-    <n-table :columns="columns" :data="products" striped />
-
-    <!-- 新增商品 Modal -->
-    <n-modal v-model:show="showModal" title="新增商品" preset="dialog">
-      <n-form :model="form" :rules="rules" ref="formRef" label-width="80px">
-        <n-form-item label="名稱" path="name">
-          <n-input v-model:value="form.name" placeholder="請輸入商品名稱" />
-        </n-form-item>
-
-        <n-form-item label="價格" path="price">
-          <n-input-number v-model:value="form.price" :min="0" />
-        </n-form-item>
-
-        <n-form-item label="描述" path="description">
-          <n-input v-model:value="form.description" type="textarea" placeholder="請輸入商品描述" />
-        </n-form-item>
-      </n-form>
-
-      <n-form-item label="標籤" path="tagIds">
-        <n-select
-          v-model:value="form.tagIds"
-          multiple
-          :options="tags.map((t: Tag) => ({ label: t.name, value: t.id }))"
-          placeholder="請選擇標籤"
-        />
-      </n-form-item>
-
-      <n-form-item label="分類" path="categoryId">
-        <n-select
-          v-model:value="form.categoryId"
-          :options="categories.map((c: Category) => ({ label: c.name, value: c.id }))"
-          placeholder="請選擇分類"
-        />
-      </n-form-item>
-
-      <template #action>
-        <n-button @click="showModal = false">取消</n-button>
-        <n-button type="primary" @click="handleSubmit">
-          {{ isEditMode ? '更新' : '新增' }}
-        </n-button>
-      </template>
-    </n-modal>
-  </div>
+  <!-- 商品列表 -->
+  <n-data-table
+    :columns="columns"
+    :data="products"
+    :bordered="false"
+    :pagination="{ pageSize: 10 }"
+  />
+  <!-- 商品表單 Modal（新增 / 編輯） -->
+  <n-modal
+    v-model:show="showFormModal"
+    :title="editingProduct ? '編輯商品' : '新增商品'"
+    preset="dialog"
+  >
+    <ProductForm
+      v-if="showFormModal"
+      :initialValue="editingProduct"
+      :categories="categories"
+      :tags="tags"
+      @submit="handleSubmit"
+      @cancel="showFormModal = false"
+    />
+  </n-modal>
 </template>
 
 <script setup lang="ts">
-// Vue Core
 import { ref, onMounted, h } from 'vue'
-
-// Naive UI 元件與 hooks
-import {
-  NH2,
-  NTable,
-  NButton,
-  NSpace,
-  NModal,
-  NForm,
-  NFormItem,
-  NInput,
-  NInputNumber,
-  useMessage,
-  useDialog
-} from 'naive-ui'
-import type { FormRules } from 'naive-ui'
-
-// 自訂 API 模組
+import { useMessage, useDialog, type DataTableColumns } from 'naive-ui'
 import {
   getAllProducts,
   createProduct,
@@ -80,105 +39,55 @@ import {
   deleteProduct,
   type Product
 } from '@/api/product'
-
-import { getAllTags } from '@/api/tag'
-import { getAllCategories } from '@/api/category'
-
-interface ProductForm {
-  name: string
-  price: number
-  description: string
-  categoryId: number | null
-  tagIds: number[]
-}
+import { getAllCategories, type Category } from '@/api/category'
+import { getAllTags, type Tag } from '@/api/tag'
+import ProductForm from '@/components/admin/ProductForm.vue'
+import { extractImageUrls } from '@/utils/imageUtils.ts'
 
 const products = ref<Product[]>([])
-const showModal = ref(false)
+const categories = ref<Category[]>([])
+const tags = ref<Tag[]>([])
+
+const showFormModal = ref(false)
+const editingProduct = ref<Product | null>(null)
 const message = useMessage()
 const dialog = useDialog()
 
-type Tag = { id: number; name: string }
-const tags = ref<Tag[]>([])
-
-type Category = { id: number; name: string }
-const categories = ref<Category[]>([])
-
-const formRef = ref()
-const form = ref<ProductForm>({
-  name: '',
-  price: 0,
-  description: '',
-  categoryId: null,
-  tagIds: []
-})
-
-const isEditMode = ref(false)
-const currentEditId = ref<number | null>(null)
-
-function resetForm() {
-  form.value = { name: '', price: 0, description: '', categoryId: null, tagIds: [] }
-  isEditMode.value = false
-  currentEditId.value = null
-}
-
-function confirmDelete(row: Product) {
-  dialog.warning({
-    title: '確認刪除',
-    content: `確定要刪除「${row.name}」嗎？`,
-    positiveText: '確認',
-    negativeText: '取消',
-    onPositiveClick: async () => {
-      await deleteProduct(row.id)
-      message.success('刪除成功')
-      await loadProducts()
-    }
-  })
-}
-
-function openEditModal(row: Product) {
-  form.value = {
-    name: row.name,
-    price: row.price,
-    description: row.description,
-    categoryId: row.category?.id ?? null,
-    tagIds: (row.tags ?? []).map((t: { id: number }) => t.id)
-  }
-  currentEditId.value = row.id
-  isEditMode.value = true
-  showModal.value = true
-}
-
-async function loadTags() {
-  const res = await getAllTags()
-  tags.value = res.data
-}
-
-async function loadCategories() {
-  const res = await getAllCategories()
-  categories.value = res.data
-}
-
-const columns = [
+const columns: DataTableColumns<Product> = [
   { title: 'ID', key: 'id' },
   { title: '名稱', key: 'name' },
   { title: '價格', key: 'price' },
+  { title: '描述', key: 'description' },
+  {
+    title: '圖片',
+    key: 'imageUrl',
+    render(row) {
+      const urls = Array.isArray(row.imageUrl) ? row.imageUrl : [row.imageUrl]
+      return urls.filter(Boolean).map((url, i) =>
+        h('img', {
+          src: url,
+          style: 'max-width: 80px; max-height: 80px; object-fit: cover; margin-right: 4px;',
+          key: i
+        })
+      )
+    }
+  },
   {
     title: '操作',
     key: 'actions',
-
-    render(row: Product) {
+    render(row) {
       return h('div', { style: 'display: flex; gap: 8px;' }, [
         h(
-          NButton,
+          'n-button',
           {
-            type: 'primary',
+            type: 'info',
             size: 'small',
             onClick: () => openEditModal(row)
           },
           { default: () => '編輯' }
         ),
         h(
-          NButton,
+          'n-button',
           {
             type: 'error',
             size: 'small',
@@ -191,66 +100,77 @@ const columns = [
   }
 ]
 
-const rules: FormRules = {
-  name: {
-    required: true,
-    message: '請填寫商品名稱',
-    trigger: 'blur'
-  },
-  price: {
-    required: true,
-    type: 'number',
-    message: '請填寫商品價格',
-    trigger: 'blur'
-  },
-  tagIds: {
-    required: true,
+onMounted(async () => {
+  await fetchProducts()
+  await loadCategoriesAndTags()
+})
 
-    type: 'array',
-    message: '請選擇商品標籤',
-    trigger: 'change'
-  },
-  categoryId: {
-    required: true,
-    type: 'number',
-    message: '請選擇商品分類',
-    trigger: 'change'
-  }
-}
-
-async function loadProducts() {
+async function fetchProducts() {
   const res = await getAllProducts()
   products.value = res.data
 }
 
-async function handleSubmit() {
-  await formRef.value?.validate()
-
-  if (isEditMode.value && currentEditId.value !== null) {
-    await updateProduct(currentEditId.value, form.value)
-    message.success('商品更新成功')
-  } else {
-    await createProduct(form.value)
-    message.success('商品新增成功')
-  }
-
-  showModal.value = false
-  await loadProducts()
-  resetForm()
+async function loadCategoriesAndTags() {
+  const [catRes, tagRes] = await Promise.all([getAllCategories(), getAllTags()])
+  categories.value = catRes.data
+  tags.value = tagRes.data
 }
 
-onMounted(() => {
-  loadProducts()
-  loadCategories()
-  loadTags()
+function openCreateModal() {
+  editingProduct.value = null
+  showFormModal.value = true
+}
+
+function openEditModal(product: Product) {
+  editingProduct.value = product
+  showFormModal.value = true
+}
+
+async function handleSubmit(product: Product) {
+  try {
+    const cloned = { ...product }
+    const uploadedUrls = await extractImageUrls(product.imageUrl ?? [])
+    cloned.imageUrl = [...uploadedUrls]
+
+    if (product.id) {
+      await updateProduct(product.id, cloned)
+      message.success('商品已更新')
+    } else {
+      await createProduct(cloned)
+      message.success('商品已創建')
+    }
+    showFormModal.value = false
+    await fetchProducts()
+  } catch (err) {
+    message.error('儲存商品失敗')
+  }
+}
+
+function confirmDelete(product: Product) {
+  dialog.warning({
+    title: '確認刪除',
+    content: `確定要刪除「${product.name}」嗎？`,
+    positiveText: '刪除',
+    negativeText: '取消',
+    async onPositiveClick() {
+      try {
+        await deleteProduct(product.id)
+        message.success('商品已刪除')
+        await fetchProducts()
+      } catch (err) {
+        message.error('刪除失敗')
+        console.error(err)
+      }
+    }
+  })
+}
+onMounted(async () => {
+  try {
+    await fetchProducts()
+    await loadCategoriesAndTags()
+  } catch (err) {
+    console.error('初始化失敗', err)
+    message.error('載入資料失敗')
+  }
 })
 </script>
-
-<style scoped>
-.product-page {
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-</style>
