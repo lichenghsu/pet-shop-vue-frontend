@@ -1,32 +1,36 @@
 <template>
-  <div class="tag-page">
-    <!-- 標題與新增按鈕 -->
-    <n-space
-      justify="space-between"
-      align="center"
-      class="mb-4"
-      syle="width: 100%; margin-bottom: 16px"
-    >
-      <n-h2>標籤管理</n-h2>
-      <n-button type="primary" @click="openCreate">新增標籤</n-button>
-    </n-space>
+  <!-- 標題與新增按鈕 -->
+  <n-space
+    justify="space-between"
+    align="center"
+    class="mb-4"
+    syle="width: 100%; margin-bottom: 16px"
+  >
+    <n-h2>標籤管理</n-h2>
+    <n-button type="primary" @click="openCreate">新增標籤</n-button>
+  </n-space>
 
-    <!-- 標籤列表 -->
-    <n-table :columns="columns" :data="tags" striped />
+  <!-- 標籤列表 -->
+  <n-data-table
+    :columns="columns"
+    :data="tags"
+    :bordered="false"
+    :pagination="{ pageSize: 20 }"
+    striped
+  />
 
-    <!-- 新增／編輯標籤 Modal -->
-    <n-modal v-model:show="showModal" :title="isEditMode ? '編輯標籤' : '新增標籤'" preset="dialog">
-      <n-form :model="form" :rules="rules" ref="formRef" label-width="80px">
-        <n-form-item label="名稱" path="name">
-          <n-input v-model:value="form.name" placeholder="請輸入標籤名稱" />
-        </n-form-item>
-      </n-form>
-      <template #action>
-        <n-button @click="closeModal">取消</n-button>
-        <n-button type="primary" @click="handleSubmit">{{ isEditMode ? '更新' : '新增' }}</n-button>
-      </template>
-    </n-modal>
-  </div>
+  <!-- 新增／編輯標籤 Modal -->
+  <n-modal v-model:show="showModal" :title="isEditMode ? '編輯標籤' : '新增標籤'" preset="dialog">
+    <n-form :model="form" :rules="rules" ref="formRef" label-width="80px">
+      <n-form-item label="名稱" path="name">
+        <n-input v-model:value="form.name" placeholder="請輸入標籤名稱" />
+      </n-form-item>
+    </n-form>
+    <template #action>
+      <n-button @click="closeModal">取消</n-button>
+      <n-button type="primary" @click="handleSubmit">{{ isEditMode ? '更新' : '新增' }}</n-button>
+    </template>
+  </n-modal>
 </template>
 
 <script setup lang="ts">
@@ -35,7 +39,6 @@ import { h } from 'vue'
 import {
   NH2,
   NButton,
-  NTable,
   NSpace,
   NModal,
   NForm,
@@ -75,7 +78,12 @@ const columns = [
       return [
         h(
           NButton,
-          { size: 'small', type: 'info', onClick: () => openEdit(row) },
+          {
+            size: 'small',
+            type: 'primary',
+            style: 'margin-right: 8px',
+            onClick: () => openEdit(row)
+          },
           { default: () => '編輯' }
         ),
         h(

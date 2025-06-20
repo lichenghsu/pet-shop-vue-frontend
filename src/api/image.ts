@@ -7,8 +7,9 @@ export interface ImageUploadResponse {
 
 // POST /images
 export function uploadImage(formData: FormData) {
-  return request.post<ImageUploadResponse>('/images', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+  return request.post<ImageUploadResponse[]>('/images', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    withCredentials: true
   })
 }
 

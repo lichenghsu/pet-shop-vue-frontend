@@ -1,7 +1,7 @@
 import request from './axios'
 
 export interface LoginRequest {
-  email: string
+  username: string
   password: string
 }
 

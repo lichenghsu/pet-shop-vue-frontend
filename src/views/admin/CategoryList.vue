@@ -1,41 +1,44 @@
 <template>
-  <div class="category-page">
-    <n-space
-      justify="space-between"
-      align="center"
-      class="mb-4"
-      style="width: 100%; margin-bottom: 16px"
-    >
-      <n-h2>分類管理</n-h2>
-      <n-button type="primary" @click="showModal = true">新增分類</n-button>
-    </n-space>
+  <n-space
+    justify="space-between"
+    align="center"
+    class="mb-4"
+    style="width: 100%; margin-bottom: 16px"
+  >
+    <n-h2>分類管理</n-h2>
+    <n-button type="primary" @click="showModal = true">新增分類</n-button>
+  </n-space>
 
-    <!-- 分類列表 -->
-    <n-table :columns="columns" :data="categories" striped />
+  <!-- 分類列表 -->
+  <n-data-table
+    :columns="columns"
+    :data="categories"
+    :bordered="false"
+    :pagination="{ pageSize: 20 }"
+    striped
+  />
 
-    <!-- Modal 表單 -->
-    <n-modal v-model:show="showModal" :title="isEditMode ? '編輯分類' : '新增分類'" preset="dialog">
-      <n-form :model="form" :rules="rules" ref="formRef" label-width="80px">
-        <n-form-item label="名稱" path="name">
-          <n-input v-model:value="form.name" placeholder="請輸入分類名稱" />
-        </n-form-item>
-      </n-form>
+  <!-- Modal 表單 -->
+  <n-modal v-model:show="showModal" :title="isEditMode ? '編輯分類' : '新增分類'" preset="dialog">
+    <n-form :model="form" :rules="rules" ref="formRef" label-width="80px">
+      <n-form-item label="名稱" path="name">
+        <n-input v-model:value="form.name" placeholder="請輸入分類名稱" />
+      </n-form-item>
+    </n-form>
 
-      <template #action>
-        <n-button @click="showModal = false">取消</n-button>
-        <n-button type="primary" @click="handleSubmit">
-          {{ isEditMode ? '更新' : '新增' }}
-        </n-button>
-      </template>
-    </n-modal>
-  </div>
+    <template #action>
+      <n-button @click="showModal = false">取消</n-button>
+      <n-button type="primary" @click="handleSubmit">
+        {{ isEditMode ? '更新' : '新增' }}
+      </n-button>
+    </template>
+  </n-modal>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, h } from 'vue'
 import {
   NH2,
-  NTable,
   NButton,
   NSpace,
   NModal,
@@ -75,11 +78,6 @@ const rules: FormRules = {
 async function loadCategories() {
   const res = await getAllCategories()
   categories.value = res.data
-}
-
-function openCreateModal() {
-  resetForm()
-  showModal.value = true
 }
 
 function openEditModal(row: Category) {

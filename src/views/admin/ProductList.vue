@@ -12,6 +12,7 @@
     :bordered="false"
     :pagination="{ pageSize: 10 }"
   />
+
   <!-- 商品表單 Modal（新增 / 編輯） -->
   <n-modal
     v-model:show="showFormModal"
@@ -31,18 +32,19 @@
 
 <script setup lang="ts">
 import { ref, onMounted, h } from 'vue'
-import { useMessage, useDialog, type DataTableColumns } from 'naive-ui'
+import { useMessage, useDialog, NSpace, NButton, type DataTableColumns } from 'naive-ui'
 import {
   getAllProducts,
   createProduct,
   updateProduct,
   deleteProduct,
+  type ProductRequest,
   type Product
 } from '@/api/product'
 import { getAllCategories, type Category } from '@/api/category'
 import { getAllTags, type Tag } from '@/api/tag'
+import { uploadImage, type ImageUploadResponse } from '@/api/image'
 import ProductForm from '@/components/admin/ProductForm.vue'
-import { extractImageUrls } from '@/utils/imageUtils.ts'
 
 const products = ref<Product[]>([])
 const categories = ref<Category[]>([])
@@ -60,10 +62,11 @@ const columns: DataTableColumns<Product> = [
   { title: '描述', key: 'description' },
   {
     title: '圖片',
-    key: 'imageUrl',
+    key: 'images', // 若有 API 回傳 `images` 關聯陣列可以改這欄位
     render(row) {
-      const urls = Array.isArray(row.imageUrl) ? row.imageUrl : [row.imageUrl]
-      return urls.filter(Boolean).map((url, i) =>
+      const urls = Array.isArray(row.imageIds) ? row.imageIds.map(id => `/api/images/${id}`) : []
+
+      return urls.map((url, i) =>
         h('img', {
           src: url,
           style: 'max-width: 80px; max-height: 80px; object-fit: cover; margin-right: 4px;',
@@ -78,19 +81,19 @@ const columns: DataTableColumns<Product> = [
     render(row) {
       return h('div', { style: 'display: flex; gap: 8px;' }, [
         h(
-          'n-button',
+          NButton,
           {
             type: 'info',
-            size: 'small',
+            size: 'medium',
             onClick: () => openEditModal(row)
           },
           { default: () => '編輯' }
         ),
         h(
-          'n-button',
+          NButton,
           {
             type: 'error',
-            size: 'small',
+            size: 'medium',
             onClick: () => confirmDelete(row)
           },
           { default: () => '刪除' }
@@ -100,14 +103,13 @@ const columns: DataTableColumns<Product> = [
   }
 ]
 
-onMounted(async () => {
-  await fetchProducts()
-  await loadCategoriesAndTags()
-})
-
 async function fetchProducts() {
-  const res = await getAllProducts()
-  products.value = res.data
+  try {
+    const res = await getAllProducts()
+    products.value = res.data
+  } catch (err) {
+    console.error('初始化失敗', err)
+  }
 }
 
 async function loadCategoriesAndTags() {
@@ -122,15 +124,76 @@ function openCreateModal() {
 }
 
 function openEditModal(product: Product) {
-  editingProduct.value = product
+  editingProduct.value = {
+    id: product.id,
+    name: product.name,
+    description: product.description,
+    price: product.price,
+    imageIds: product.imageIds ?? [],
+    categoryId: product.categoryId ?? 0,
+    categoryName: product.categoryName ?? '',
+    tagIds: product.tagIds,
+    tagNames: product.tagNames ?? []
+  }
   showFormModal.value = true
 }
 
-async function handleSubmit(product: Product) {
+function confirmDelete(product: Product) {
+  dialog.warning({
+    title: '確認刪除',
+    content: `確定要刪除商品 "${product.name}" 嗎？`,
+    positiveText: '刪除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await deleteProduct(product.id)
+        message.success('商品已刪除')
+        await fetchProducts()
+      } catch (err) {
+        console.error('刪除商品失敗', err)
+        message.error('刪除商品失敗')
+      }
+    }
+  })
+}
+
+async function handleSubmit(product: Partial<Product> & { imageUrl?: (string | File)[] }) {
   try {
-    const cloned = { ...product }
-    const uploadedUrls = await extractImageUrls(product.imageUrl ?? [])
-    cloned.imageUrl = [...uploadedUrls]
+    const realFiles = (product.imageUrl ?? []).filter((f): f is File => typeof f !== 'string')
+
+    let uploaded: ImageUploadResponse[] = []
+
+    if (realFiles.length > 0) {
+      const formData = new FormData()
+      realFiles.forEach(f => formData.append('files', f))
+      const res = await uploadImage(formData)
+      uploaded = res.data
+    }
+
+    const existingIds = (product.imageUrl ?? [])
+      .filter((f): f is string => typeof f === 'string')
+      .map(url => {
+        const match = url.match(/\/api\/images\/(\d+)/)
+        return match ? parseInt(match[1]) : null
+      })
+      .filter((id): id is number => id !== null)
+
+    const imageIds = [...existingIds, ...uploaded.map(i => i.id)]
+
+    if (imageIds.length === 0) {
+      message.error('請至少上傳一張圖片')
+      return
+    }
+
+    const cloned: ProductRequest = {
+      id: product.id!,
+      name: product.name ?? '',
+      description: product.description ?? '',
+      price: product.price ?? 0,
+      categoryId: product.categoryId ?? 0,
+      tagIds: product.tagIds ?? [],
+      imageIds: [...existingIds, ...uploaded.map(i => i.id)].filter(id => id > 0)
+    }
 
     if (product.id) {
       await updateProduct(product.id, cloned)
@@ -139,31 +202,15 @@ async function handleSubmit(product: Product) {
       await createProduct(cloned)
       message.success('商品已創建')
     }
+
     showFormModal.value = false
     await fetchProducts()
   } catch (err) {
+    console.error('提交商品失敗', err)
     message.error('儲存商品失敗')
   }
 }
 
-function confirmDelete(product: Product) {
-  dialog.warning({
-    title: '確認刪除',
-    content: `確定要刪除「${product.name}」嗎？`,
-    positiveText: '刪除',
-    negativeText: '取消',
-    async onPositiveClick() {
-      try {
-        await deleteProduct(product.id)
-        message.success('商品已刪除')
-        await fetchProducts()
-      } catch (err) {
-        message.error('刪除失敗')
-        console.error(err)
-      }
-    }
-  })
-}
 onMounted(async () => {
   try {
     await fetchProducts()
