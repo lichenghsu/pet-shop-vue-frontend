@@ -53,7 +53,7 @@
     </n-form-item>
 
     <n-form-item>
-      <n-button type="primary" @click="handleSubmit">
+      <n-button type="primary" @click="handleFormSubmit">
         {{ isEdit ? '更新' : '新增' }}
       </n-button>
     </n-form-item>
@@ -70,37 +70,43 @@ import {
   NInputNumber,
   NSelect,
   NUpload,
+  useMessage,
   type FormRules,
   type UploadFileInfo
 } from 'naive-ui'
 import request from '@/api/axios'
-import { uploadImage } from '@/api/image'
+import { uploadImage, type ImageUploadResponse } from '@/api/image'
 import type { Category } from '@/api/category'
 import type { Tag } from '@/api/tag'
-import type { Product } from '@/api/product'
+import { createProduct, updateProduct, type ProductRequest, type Product } from '@/api/product'
 
 const props = defineProps<{
   initialValue: Partial<Product> | null
   categories: Category[]
   tags: Tag[]
 }>()
-
 const emit = defineEmits<{
-  (e: 'submit', payload: Partial<Product>): void
+  (e: 'close'): void
+  (e: 'refresh'): void
 }>()
-
+const message = useMessage()
 const isEdit = computed(() => !!props.initialValue?.id)
 
 const formRef = ref()
 const uploadFiles = ref<UploadFileInfo[]>([])
+const base = request.defaults.baseURL
 
-const form = ref<Partial<Product> & { imageUrl: (string | File)[] }>({
+export type ProductImage =
+  | { file: File } // 使用者剛選擇、尚未上傳的圖片
+  | { id: number; url: string } // 已上傳過、有 ID 與 URL 的圖片
+
+const form = ref<Partial<Product> & { images: ProductImage[] }>({
   name: '',
   price: 0,
   description: '',
   categoryId: 0,
-  tagIds: [] as number[],
-  imageUrl: []
+  tagIds: [],
+  images: []
 })
 
 const rules: FormRules = {
@@ -120,46 +126,66 @@ watch(
   () => props.initialValue,
   val => {
     if (val) {
-      // 資料初始化
       form.value = {
         id: val.id,
-        name: val.name ?? '',
-        price: val.price ?? 0,
-        description: val.description ?? '',
-        categoryId: val.categoryId ?? 0,
-        tagIds: val.tagIds ?? [],
-        imageUrl: (val.imageIds ?? []).map(id => `/api/images/${id}`)
+        name: val.name,
+        price: val.price,
+        description: val.description,
+        categoryId: val.categoryId,
+        tagIds: val.tagIds,
+        // 👉 將 imageIds 組成 imageUrl（字串形式，方便上傳組件顯示）
+        images: (val.imageIds ?? []).map(id => ({
+          id,
+          url: `/images/${id}`
+        }))
       }
-      uploadFiles.value = (form.value.imageUrl as string[]).map(
-        (url, index): UploadFileInfo => ({
-          id: String(index),
+
+      // uploadFiles 給 n-upload 顯示用
+
+      uploadFiles.value = form.value.images.map((img, index) => {
+        if ('id' in img) {
+          return {
+            id: `${img.id}`,
+            name: `圖片 ${index + 1}`,
+            status: 'finished',
+            url: `${base}${img.url}`,
+            thumbnailUrl: `${base}${img.url}`,
+            percentage: 100,
+            type: 'image/png'
+          }
+        }
+
+        return {
+          id: `${index}`,
           name: `圖片 ${index + 1}`,
-          status: 'finished',
-          url,
-          thumbnailUrl: url,
-          percentage: 100,
+          status: 'pending',
+          file: img.file,
+          percentage: 0,
           type: 'image/png'
-        })
-      )
-    } else {
-      form.value = {
-        name: '',
-        price: 0,
-        description: '',
-        categoryId: 0,
-        tagIds: [],
-        imageUrl: []
-      }
-      uploadFiles.value = []
+        }
+      })
     }
   },
   { immediate: true }
 )
+
 const handleUploadChange = ({ fileList }: { fileList: UploadFileInfo[] }) => {
   uploadFiles.value = fileList
-  form.value.imageUrl = fileList.map(f => f.file ?? f.url).filter((f): f is File | string => !!f)
-}
 
+  form.value.images = fileList
+    .map(f => {
+      if (f.file) {
+        return { file: f.file }
+      } else if (f.id && f.url) {
+        return {
+          id: Number(f.id),
+          url: f.url
+        }
+      }
+      return null
+    })
+    .filter((f): f is ProductImage => f !== null)
+}
 function renderCategoryLabel(option: any) {
   if (option.disabled) {
     return h('span', { style: 'color: #aaa;' }, option.label)
@@ -167,43 +193,89 @@ function renderCategoryLabel(option: any) {
   return option.label
 }
 
-function handleSubmit() {
-  formRef.value?.validate(async (errors: any) => {
+function resetForm() {
+  form.value = {
+    name: '',
+    price: 0,
+    description: '',
+    categoryId: 0,
+    tagIds: [],
+    images: []
+  }
+  uploadFiles.value = []
+}
+
+async function handleFormSubmit() {
+  await formRef.value?.validate(async (errors: any) => {
     if (errors) {
-      console.warn('表單驗證失敗', errors)
+      message.warning('表單驗證失敗')
       return
     }
 
-    // 上傳新圖片
-    const newFiles = uploadFiles.value.filter(f => !f.url && f.file)
-    let uploadedIds: number[] = []
+    const product = form.value
+    message.info('✔️ 表單驗證通過，準備處理圖片...')
 
-    if (newFiles.length > 0) {
+    // 👉 分類圖片
+    const oldImages = product.images.filter((f): f is { id: number; url: string } => 'id' in f)
+    const newImages = product.images.filter((f): f is { file: File } => 'file' in f)
+
+    // 👉 上傳新圖片
+    let uploaded: ImageUploadResponse[] = []
+    if (newImages.length > 0) {
+      message.info(`📤 偵測到 ${newImages.length} 張新圖片，開始上傳...`)
       const formData = new FormData()
-      newFiles.forEach(f => formData.append('files', f.file as File))
+      newImages.forEach(f => formData.append('files', f.file))
 
       try {
         const res = await uploadImage(formData)
-        uploadedIds = res.data.map((i: { id: number }) => i.id)
-
-        // 更新已上傳圖片的 url
-        const base = request.defaults.baseURL
-        newFiles.forEach((f, idx) => {
-          f.url = `${base}/images/${uploadedIds[idx]}`
-          f.status = 'finished'
-        })
+        uploaded = res.data
+        message.success(`✅ 成功上傳 ${uploaded.length} 張圖片`)
       } catch (err) {
-        console.error('圖片上傳失敗', err)
+        message.error('圖片上傳失敗，請稍後再試')
         return
       }
+    } else {
+      message.info('🟡 沒有新圖片需要上傳')
     }
 
-    const payload: Partial<Product> = {
-      ...form.value,
-      imageIds: uploadedIds
+    // 👉 組合所有圖片 ID（舊圖 + 新圖）
+    const imageIds = [...oldImages.map(img => img.id), ...uploaded.map(img => img.id)]
+
+    if (imageIds.length === 0) {
+      message.error('請至少上傳一張圖片')
+      return
     }
 
-    emit('submit', payload)
+    const payload: ProductRequest = {
+      id: product.id!,
+      name: product.name ?? '',
+      description: product.description ?? '',
+      price: product.price ?? 0,
+      categoryId: product.categoryId ?? 0,
+      tagIds: product.tagIds ?? [],
+      imageIds
+    }
+
+    // 👉 呼叫 API 儲存資料
+    try {
+      if (product.id) {
+        message.info('🔄 正在更新商品...')
+        await updateProduct(product.id, payload)
+        message.success('✅ 商品已更新')
+      } else {
+        message.info('➕ 正在建立新商品...')
+        await createProduct(payload)
+        message.success('✅ 商品已創建')
+      }
+    } catch (err) {
+      console.error('❌ 儲存商品失敗:', err)
+      message.error('儲存商品失敗，請稍後再試')
+      return
+    }
+
+    resetForm()
+    emit('close')
+    emit('refresh')
   })
 }
 </script>

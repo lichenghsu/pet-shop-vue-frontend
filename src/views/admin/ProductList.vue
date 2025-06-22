@@ -24,8 +24,8 @@
       :initialValue="editingProduct"
       :categories="categories"
       :tags="tags"
-      @submit="handleSubmit"
-      @cancel="showFormModal = false"
+      @close="showFormModal = false"
+      @refresh="fetchProducts"
     />
   </n-modal>
 </template>
@@ -33,18 +33,11 @@
 <script setup lang="ts">
 import { ref, onMounted, h } from 'vue'
 import { useMessage, useDialog, NSpace, NButton, type DataTableColumns } from 'naive-ui'
-import {
-  getAllProducts,
-  createProduct,
-  updateProduct,
-  deleteProduct,
-  type ProductRequest,
-  type Product
-} from '@/api/product'
+import { getAllProducts, deleteProduct, type Product } from '@/api/product'
 import { getAllCategories, type Category } from '@/api/category'
 import { getAllTags, type Tag } from '@/api/tag'
-import { uploadImage, type ImageUploadResponse } from '@/api/image'
 import ProductForm from '@/components/admin/ProductForm.vue'
+import request from '@/api/axios'
 
 const products = ref<Product[]>([])
 const categories = ref<Category[]>([])
@@ -54,6 +47,7 @@ const showFormModal = ref(false)
 const editingProduct = ref<Product | null>(null)
 const message = useMessage()
 const dialog = useDialog()
+const base = request.defaults.baseURL
 
 const columns: DataTableColumns<Product> = [
   { title: 'ID', key: 'id' },
@@ -62,17 +56,22 @@ const columns: DataTableColumns<Product> = [
   { title: '描述', key: 'description' },
   {
     title: '圖片',
-    key: 'images', // 若有 API 回傳 `images` 關聯陣列可以改這欄位
+    key: 'images',
     render(row) {
-      const urls = Array.isArray(row.imageIds) ? row.imageIds.map(id => `/api/images/${id}`) : []
+      const firstId =
+        Array.isArray(row.imageIds) && row.imageIds.length > 0 ? row.imageIds[0] : null
+      const url = firstId ? `${base}/images/${firstId}` : ''
 
-      return urls.map((url, i) =>
-        h('img', {
-          src: url,
-          style: 'max-width: 80px; max-height: 80px; object-fit: cover; margin-right: 4px;',
-          key: i
-        })
-      )
+      return h('img', {
+        src: url,
+        style: {
+          width: '80px',
+          height: '80px',
+          objectFit: 'cover',
+          borderRadius: '4px',
+          border: '1px solid #eee'
+        }
+      })
     }
   },
   {
@@ -83,7 +82,7 @@ const columns: DataTableColumns<Product> = [
         h(
           NButton,
           {
-            type: 'info',
+            type: 'primary',
             size: 'medium',
             onClick: () => openEditModal(row)
           },
@@ -130,6 +129,7 @@ function openEditModal(product: Product) {
     description: product.description,
     price: product.price,
     imageIds: product.imageIds ?? [],
+    imageUrls: product.imageUrls ?? [],
     categoryId: product.categoryId ?? 0,
     categoryName: product.categoryName ?? '',
     tagIds: product.tagIds,
@@ -155,60 +155,6 @@ function confirmDelete(product: Product) {
       }
     }
   })
-}
-
-async function handleSubmit(product: Partial<Product> & { imageUrl?: (string | File)[] }) {
-  try {
-    const realFiles = (product.imageUrl ?? []).filter((f): f is File => typeof f !== 'string')
-
-    let uploaded: ImageUploadResponse[] = []
-
-    if (realFiles.length > 0) {
-      const formData = new FormData()
-      realFiles.forEach(f => formData.append('files', f))
-      const res = await uploadImage(formData)
-      uploaded = res.data
-    }
-
-    const existingIds = (product.imageUrl ?? [])
-      .filter((f): f is string => typeof f === 'string')
-      .map(url => {
-        const match = url.match(/\/api\/images\/(\d+)/)
-        return match ? parseInt(match[1]) : null
-      })
-      .filter((id): id is number => id !== null)
-
-    const imageIds = [...existingIds, ...uploaded.map(i => i.id)]
-
-    if (imageIds.length === 0) {
-      message.error('請至少上傳一張圖片')
-      return
-    }
-
-    const cloned: ProductRequest = {
-      id: product.id!,
-      name: product.name ?? '',
-      description: product.description ?? '',
-      price: product.price ?? 0,
-      categoryId: product.categoryId ?? 0,
-      tagIds: product.tagIds ?? [],
-      imageIds: [...existingIds, ...uploaded.map(i => i.id)].filter(id => id > 0)
-    }
-
-    if (product.id) {
-      await updateProduct(product.id, cloned)
-      message.success('商品已更新')
-    } else {
-      await createProduct(cloned)
-      message.success('商品已創建')
-    }
-
-    showFormModal.value = false
-    await fetchProducts()
-  } catch (err) {
-    console.error('提交商品失敗', err)
-    message.error('儲存商品失敗')
-  }
 }
 
 onMounted(async () => {

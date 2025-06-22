@@ -5,6 +5,14 @@ export interface ImageUploadResponse {
   url: string
 }
 
+export interface ImageMeta {
+  name: string
+  url: string
+  imageId?: number
+  file?: File
+  status?: 'finished' | 'uploading' | 'error'
+}
+
 // POST /images
 export function uploadImage(formData: FormData) {
   return request.post<ImageUploadResponse[]>('/images', formData, {
