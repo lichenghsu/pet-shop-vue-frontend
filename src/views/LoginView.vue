@@ -12,10 +12,10 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useAuthStore } from '@/stores/useAuthStore'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { login } from '@/api/auth'
-import type { LoginRequest } from '@/api/auth'
+import type { LoginRequest } from '@/types/loginRequest'
 
 const router = useRouter()
 const form = ref<LoginRequest>({ username: '', password: '' })
@@ -27,7 +27,9 @@ const handleLogin = async () => {
   try {
     const { data } = await login(form.value)
     auth.login(data.token)
-    router.push('/admin')
+
+    const redirect = router.currentRoute.value.query.redirect as string
+    router.push(redirect || '/admin')
   } catch (err: any) {
     error.value = err.response?.data?.message || '登入失敗'
   }

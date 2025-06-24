@@ -16,7 +16,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { NFormItem, NSelect } from 'naive-ui'
-import type { Tag } from '@/api/tag'
+import type { TagResponse } from '@/types/tagResponse'
 
 /**
  * Props for TagSelector
@@ -26,7 +26,7 @@ import type { Tag } from '@/api/tag'
  * @prop disabled - 是否禁用選單
  */
 const props = defineProps<{
-  tags: Tag[]
+  tags: TagResponse[]
   modelValue: number[]
   loading?: boolean
   disabled?: boolean
@@ -38,5 +38,7 @@ const props = defineProps<{
  */
 const emit = defineEmits(['update:modelValue'])
 
-const options = computed(() => props.tags?.map((t: Tag) => ({ label: t.name, value: t.id })) ?? [])
+const options = computed(
+  () => props.tags?.map((t: TagResponse) => ({ label: t.name, value: t.id })) ?? []
+)
 </script>

@@ -1,11 +1,6 @@
+import type { DashboardResponse } from '@/types/dashboardResponse'
 import request from './axios'
 
-export interface DashboardStats {
-  products: number
-  users: number
-  revenue: number
-}
-
-export function fetchDashboardStats() {
-  return request.get<DashboardStats>('/admin/dashboard')
+export function getDashboardStats() {
+  return request.get<DashboardResponse>('/dashboard/admin')
 }

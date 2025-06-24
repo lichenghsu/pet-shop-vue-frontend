@@ -1,12 +1,10 @@
-import request from './axios'
+import request from '@/api/axios'
+import type { UserResponse } from '@/types/userResponse'
 
-export interface User {
-  id: number
-  name: string
-  email: string
+export function getAllUsers() {
+  return request.get<UserResponse[]>('/users/admin')
 }
 
-// GET /users/me
-export function getCurrentUser() {
-  return request.get<User>('/users/me')
+export function toggleUserActive(id: number, isActive: boolean) {
+  return request.patch(`/users/admin/${id}/active`, { isActive })
 }

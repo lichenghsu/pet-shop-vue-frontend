@@ -1,13 +1,6 @@
 import request from './axios'
-
-export interface LoginRequest {
-  username: string
-  password: string
-}
-
-export interface AuthResponse {
-  token: string
-}
+import { type LoginRequest } from '@/types/loginRequest'
+import { type AuthResponse } from '@/types/authResponse'
 
 // POST /auth/login
 export function login(data: LoginRequest) {

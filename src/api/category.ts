@@ -1,18 +1,14 @@
 import request from './axios'
-
-export interface Category {
-  id: number
-  name: string
-}
+import { type CategoryResponse } from '@/types/categoryResponse'
 
 // GET /categories
 export function getAllCategories() {
-  return request.get<Category[]>('/categories')
+  return request.get<CategoryResponse[]>('/categories')
 }
 
 // GET /categories/{id}
 export function getCategoryById(id: number) {
-  return request.get<Category>(`/categories/${id}`)
+  return request.get<CategoryResponse>(`/categories/${id}`)
 }
 
 // POST /categories
@@ -32,7 +28,7 @@ export function deleteCategory(id: number) {
 
 // GET /categories/search?keyword=xxx
 export function searchCategories(keyword: string) {
-  return request.get<Category[]>(`/categories/search`, {
+  return request.get<CategoryResponse[]>(`/categories/search`, {
     params: { keyword }
   })
 }

@@ -1,19 +1,15 @@
 import request from './axios'
-
-export interface AdminOrder {
-  id: number
-  status: string
-  // 視後端定義補齊
-}
+import { type AdminOrderResponse } from '@/types/adminOrderResponse'
+import { type UpdateOrderStatusRequest } from '@/types/updateOrderStatusRequest'
 
 // GET /orders/admin
-export function getAllAdminOrders() {
-  return request.get<AdminOrder[]>('/orders/admin')
+export function getAllAdminOrderResponses() {
+  return request.get<AdminOrderResponse[]>('/orders/admin')
 }
 
 // GET /orders/admin/{id}
-export function getAdminOrderById(id: number) {
-  return request.get<AdminOrder>(`/orders/admin/${id}`)
+export function getAdminOrderResponseById(id: number) {
+  return request.get<AdminOrderResponse>(`/orders/admin/${id}`)
 }
 
 // PATCH /orders/admin/{id}/cancel
@@ -22,6 +18,17 @@ export function cancelAdminOrder(id: number) {
 }
 
 // PATCH /orders/admin/{id}/status
-export function updateAdminOrderStatus(id: number, status: string) {
-  return request.patch(`/orders/admin/${id}/status`, { status })
+export function updateOrderStatuses(params: { orderIds: number[]; status: string }) {
+  return request.patch('/orders/admin/batch-status', params)
+}
+
+// PATCH /orders/admin/batch-status
+
+export function batchUpdateStatus(data: UpdateOrderStatusRequest) {
+  return request.patch('/orders/admin/batch-status', data)
+}
+
+// PUT /orders/admin/{id}/items
+export function updateOrderItems(id: number, items: any[]) {
+  return request.put(`/orders/admin/${id}/items`, items)
 }

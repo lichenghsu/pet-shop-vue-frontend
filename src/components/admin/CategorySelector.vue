@@ -15,7 +15,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { NFormItem, NSelect } from 'naive-ui'
-import type { Category } from '@/api/category'
+import type { CategoryResponse } from '@/types/categoryResponse'
 
 /**
  * Props for CategorySelector
@@ -25,7 +25,7 @@ import type { Category } from '@/api/category'
  * @prop disabled - 是否禁用選單
  */
 const props = defineProps<{
-  categories: Category[]
+  categories: CategoryResponse[]
   modelValue: number | null
   loading?: boolean
   disabled?: boolean
@@ -38,6 +38,6 @@ const props = defineProps<{
 const emit = defineEmits(['update:modelValue'])
 
 const options = computed(
-  () => props.categories?.map((c: Category) => ({ label: c.name, value: c.id })) ?? []
+  () => props.categories?.map((c: CategoryResponse) => ({ label: c.name, value: c.id })) ?? []
 )
 </script>

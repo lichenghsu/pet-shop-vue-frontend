@@ -34,14 +34,16 @@
 import { ref, onMounted, h } from 'vue'
 import { useMessage, useDialog, NSpace, NButton, type DataTableColumns } from 'naive-ui'
 import { getAllProducts, deleteProduct, type Product } from '@/api/product'
-import { getAllCategories, type Category } from '@/api/category'
-import { getAllTags, type Tag } from '@/api/tag'
+import { getAllCategories } from '@/api/category'
+import { type CategoryResponse } from '@/types/categoryResponse'
+import { getAllTags } from '@/api/tag'
+import { type TagResponse } from '@/types/tagResponse'
 import ProductForm from '@/components/admin/ProductForm.vue'
 import request from '@/api/axios'
 
 const products = ref<Product[]>([])
-const categories = ref<Category[]>([])
-const tags = ref<Tag[]>([])
+const categories = ref<CategoryResponse[]>([])
+const tags = ref<TagResponse[]>([])
 
 const showFormModal = ref(false)
 const editingProduct = ref<Product | null>(null)

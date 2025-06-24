@@ -1,18 +1,14 @@
 import request from './axios'
-
-export interface Tag {
-  id: number
-  name: string
-}
+import { type TagResponse } from '@/types/tagResponse'
 
 // GET /tags
 export function getAllTags() {
-  return request.get<Tag[]>('/tags')
+  return request.get<TagResponse[]>('/tags')
 }
 
 // GET /tags/{id}
 export function getTagById(id: number) {
-  return request.get<Tag>(`/tags/${id}`)
+  return request.get<TagResponse>(`/tags/${id}`)
 }
 
 // POST /tags
@@ -32,7 +28,7 @@ export function deleteTag(id: number) {
 
 // GET /tags/search?keyword=xxx
 export function searchTags(keyword: string) {
-  return request.get<Tag[]>(`/tags/search`, {
+  return request.get<TagResponse[]>(`/tags/search`, {
     params: { keyword }
   })
 }

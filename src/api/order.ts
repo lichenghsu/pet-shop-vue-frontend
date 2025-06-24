@@ -1,23 +1,18 @@
 import request from './axios'
-
-export interface Order {
-  id: number
-  status: string
-  // 其他欄位視後端定義補上
-}
+import { type OrderResponse } from '@/types/orderResponse'
 
 // GET /orders
 export function getMyOrders() {
-  return request.get<Order[]>('/orders')
+  return request.get<OrderResponse[]>('/orders')
 }
 
 // GET /orders/{id}
 export function getOrderById(id: number) {
-  return request.get<Order>(`/orders/${id}`)
+  return request.get<OrderResponse>(`/orders/${id}`)
 }
 
 // POST /orders
-export function createOrder(data: any) {
+export function placeOrder(data: any) {
   return request.post('/orders', data)
 }
 

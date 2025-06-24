@@ -28,7 +28,7 @@ const router = useRouter()
 
 function handleLogout() {
   auth.logout()
-  router.push('/login')
+  router.push('/admin')
 }
 </script>
 

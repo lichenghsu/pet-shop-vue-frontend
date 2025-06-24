@@ -49,15 +49,10 @@ import {
   useDialog
 } from 'naive-ui'
 import type { FormRules } from 'naive-ui'
-import {
-  getAllCategories,
-  createCategory,
-  updateCategory,
-  deleteCategory,
-  type Category
-} from '@/api/category'
+import { getAllCategories, createCategory, updateCategory, deleteCategory } from '@/api/category'
+import type { CategoryResponse } from '@/types/categoryResponse'
 
-const categories = ref<Category[]>([])
+const categories = ref<CategoryResponse[]>([])
 const showModal = ref(false)
 const isEditMode = ref(false)
 const currentEditId = ref<number | null>(null)
@@ -80,7 +75,7 @@ async function loadCategories() {
   categories.value = res.data
 }
 
-function openEditModal(row: Category) {
+function openEditModal(row: CategoryResponse) {
   form.value = { name: row.name }
   isEditMode.value = true
   currentEditId.value = row.id
@@ -103,7 +98,7 @@ async function handleSubmit() {
   await loadCategories()
 }
 
-function confirmDelete(row: Category) {
+function confirmDelete(row: CategoryResponse) {
   dialog.warning({
     title: '確認刪除',
     content: `確定要刪除「${row.name}」嗎？`,
@@ -129,7 +124,7 @@ const columns = [
   {
     title: '操作',
     key: 'actions',
-    render(row: Category) {
+    render(row: CategoryResponse) {
       return [
         h(
           NButton,

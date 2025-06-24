@@ -26,7 +26,7 @@ export const useAuthStore = defineStore('auth', () => {
     const payload = JSON.parse(atob(newToken.split('.')[1]))
     user.value = {
       username: payload.sub,
-      role: payload.role
+      role: Array.isArray(payload.role) ? payload.role[0] : payload.roles
     }
   }
 

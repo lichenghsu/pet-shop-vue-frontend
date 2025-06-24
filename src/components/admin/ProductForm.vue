@@ -76,14 +76,14 @@ import {
 } from 'naive-ui'
 import request from '@/api/axios'
 import { uploadImage, type ImageUploadResponse } from '@/api/image'
-import type { Category } from '@/api/category'
-import type { Tag } from '@/api/tag'
+import type { CategoryResponse } from '@/types/categoryResponse'
+import type { TagResponse } from '@/types/tagResponse'
 import { createProduct, updateProduct, type ProductRequest, type Product } from '@/api/product'
 
 const props = defineProps<{
   initialValue: Partial<Product> | null
-  categories: Category[]
-  tags: Tag[]
+  categories: CategoryResponse[]
+  tags: TagResponse[]
 }>()
 const emit = defineEmits<{
   (e: 'close'): void

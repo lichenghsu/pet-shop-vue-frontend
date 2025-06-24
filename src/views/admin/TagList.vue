@@ -48,9 +48,10 @@ import {
   useDialog
 } from 'naive-ui'
 import type { FormRules } from 'naive-ui'
-import { getAllTags, createTag, deleteTag, updateTag, type Tag } from '@/api/tag'
+import { getAllTags, createTag, deleteTag, updateTag } from '@/api/tag'
+import { type TagResponse } from '@/types/tagResponse'
 
-const tags = ref<Tag[]>([])
+const tags = ref<TagResponse[]>([])
 const showModal = ref(false)
 const isEditMode = ref(false)
 const currentEditId = ref<number | null>(null)
@@ -74,7 +75,7 @@ const columns = [
   {
     title: '操作',
     key: 'actions',
-    render(row: Tag) {
+    render(row: TagResponse) {
       return [
         h(
           NButton,
@@ -103,7 +104,7 @@ function openCreate() {
   currentEditId.value = null
 }
 
-function openEdit(row: Tag) {
+function openEdit(row: TagResponse) {
   showModal.value = true
   isEditMode.value = true
   form.value = { name: row.name }
@@ -130,7 +131,7 @@ async function handleSubmit() {
   await loadTags()
 }
 
-function handleDelete(row: Tag) {
+function handleDelete(row: TagResponse) {
   dialog.warning({
     title: '確認刪除',
     content: `確定要刪除「${row.name}」嗎？`,
